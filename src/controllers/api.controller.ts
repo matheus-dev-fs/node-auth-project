@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { User, type UserInstance } from '../models/user.model.js';
+import bcrypt from 'bcrypt';
 
 export const ping = (req: Request, res: Response): void => {
     res.json({ pong: true });
@@ -10,9 +11,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         const email: string | undefined = req.body.email?.trim();
         const password: string | undefined = req.body.password;
 
-        const IS_EMAIL_OR_PASSWORD_NOT_SENT: boolean = !email || !password;
-
-        if (IS_EMAIL_OR_PASSWORD_NOT_SENT) {
+        if (!email || !password) {
             res.status(400).json({ error: 'E-mail e/ou senha não enviados.' });
             return;
         }
@@ -23,8 +22,9 @@ export const register = async (req: Request, res: Response, next: NextFunction):
             res.status(400).json({ error: 'E-mail já existe.' });
             return;
         }
-
-        const newUser: UserInstance = await User.create({ email, password });
+        
+        const encryptedPassword: string = await bcrypt.hash(password, 10);
+        const newUser: UserInstance = await User.create({ email, password: encryptedPassword });
 
         res.status(201).json({ id: newUser.id });
     } catch (error) {
@@ -37,18 +37,23 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
         const email: string | undefined = req.body.email?.trim();
         const password: string | undefined = req.body.password;
 
-        const IS_EMAIL_OR_PASSWORD_NOT_SENT: boolean = !email || !password;
-
-        if (IS_EMAIL_OR_PASSWORD_NOT_SENT) {
+        if (!email || !password) {
             res.status(400).json({ error: 'E-mail e/ou senha não enviados.' });
             return;
         }
 
         const user: UserInstance | null = await User.findOne({
-            where: { email, password }
+            where: { email }
         });
 
         if (!user) {
+            res.status(401).json({ status: false });
+            return;
+        }
+
+        const IS_PASSWORD_VALID: boolean = await bcrypt.compare(password, user.password);
+
+        if (!IS_PASSWORD_VALID) {
             res.status(401).json({ status: false });
             return;
         }

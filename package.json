@@ -11,12 +11,14 @@
         "dev": "node --import=tsx --watch ./src/server.ts"
     },
     "devDependencies": {
+        "@types/bcrypt": "^6.0.0",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.6",
         "typescript": "^5.9.3"
     },
     "dependencies": {
         "@types/sequelize": "^4.28.20",
+        "bcrypt": "^6.0.0",
         "cors": "^2.8.6",
         "dotenv": "^17.3.1",
         "express": "^5.2.1",
