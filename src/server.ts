@@ -6,6 +6,7 @@ import cors from 'cors';
 import apiRoute from './routes/api.route.js';
 import { notFound } from './controllers/404.controller.js';
 import { errorHandler } from './middlewares/error.middleware.js';
+import { ping } from './controllers/api.controller.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 
+app.get('/ping', ping);
 
 app.use(apiRoute);
 app.use(notFound);
