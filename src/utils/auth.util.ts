@@ -47,40 +47,28 @@ const generateInvalidAuthResult = (message: string, status: number): InvalidCred
 
 export const parseBasicAuthHeader = (authHeader: string | undefined): CredentialValidationResult => {
     if (!authHeader) {
-        const missingHeaderError: CredentialValidationResult = {
-            isValid: false,
-            error: {
-                message: 'Cabeçalho de autorização ausente.',
-                status: 400
-            },
-            data: null
-        };
+        const missingHeaderError: CredentialValidationResult = generateInvalidAuthResult(
+            'Cabeçalho de autorização ausente.',
+            400
+        );
         return missingHeaderError;
     }
 
     if (!isAuthHeaderOfType(authHeader, 'Basic')) {
-        const invalidTypeError: CredentialValidationResult = {
-            isValid: false,
-            error: {
-                message: 'Tipo de autenticação inválido. Esperado "Basic".',
-                status: 400
-            },
-            data: null
-        }
+        const invalidTypeError: CredentialValidationResult = generateInvalidAuthResult(
+            'Tipo de autenticação inválido. Esperado "Basic".',
+            400
+        );
         return invalidTypeError;
     }
 
     const hash: string | null = getAuthCredentialFromHeader(authHeader);
 
     if (!hash) {
-        const missingHashError: CredentialValidationResult = {
-            isValid: false,
-            error: {
-                message: 'Hash de credenciais ausente no cabeçalho de autorização.',
-                status: 400
-            },
-            data: null
-        };
+        const missingHashError: CredentialValidationResult = generateInvalidAuthResult(
+            'Hash de credenciais ausente no cabeçalho de autorização.',
+            400
+        );
         return missingHashError;
     }
 
@@ -89,14 +77,10 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
         const separatorIndex: number = decoded.indexOf(':');
 
         if (separatorIndex <= 0) {
-            const malformedError: CredentialValidationResult = {
-                isValid: false,
-                error: {
-                    message: 'Cabeçalho de autorização malformado.',
-                    status: 400
-                },
-                data: null
-            };
+            const malformedError: CredentialValidationResult = generateInvalidAuthResult(
+                'Cabeçalho de autorização malformado.',
+                400
+            );
             return malformedError;
         }
 
@@ -104,14 +88,10 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
         const password: string = decoded.slice(separatorIndex + 1);
 
         if (!email || !password) {
-            const missingCredentialsError: CredentialValidationResult = {
-                isValid: false,
-                error: {
-                    message: 'E-mail e/ou senha ausentes no cabeçalho de autorização.',
-                    status: 400
-                },
-                data: null
-            };
+            const missingCredentialsError: CredentialValidationResult = generateInvalidAuthResult(
+                'E-mail e/ou senha ausentes no cabeçalho de autorização.',
+                400
+            );
             return missingCredentialsError;
         }
 
@@ -121,14 +101,11 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
             data: { email, password }
         }
     } catch (error: unknown) {
-        return {
-            isValid: false,
-            error: {
-                message: 'Hash de credenciais inválido. Não é um Base64 válido.',
-                status: 400
-            },
-            data: null
-        };
+        const invalidHashError: CredentialValidationResult = generateInvalidAuthResult(
+            'Hash de credenciais inválido. Não é um Base64 válido.',
+            400
+        );
+        return invalidHashError;
     }
 };
 
@@ -193,19 +170,19 @@ export const parseBearerAuthHeader = (authHeader: string | undefined): BearerCre
     } catch (error: unknown) {
         if (error instanceof TokenExpiredError) {
             const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
-                'Token de credenciais expirado.', 
+                'Token de credenciais expirado.',
                 401
             );
             return invalidTokenError;
         } else if (error instanceof NotBeforeError) {
             const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
-                'Token de credenciais não ativo.', 
+                'Token de credenciais não ativo.',
                 401
             );
             return invalidTokenError;
         } else if (error instanceof JsonWebTokenError) {
             const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
-                'Token de credenciais inválido.', 
+                'Token de credenciais inválido.',
                 401
             );
             return invalidTokenError;
