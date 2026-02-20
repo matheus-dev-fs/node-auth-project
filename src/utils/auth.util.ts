@@ -1,8 +1,9 @@
 import type { CredentialValidationResult } from "../types/credential-validation-result.type.js";
 import type { ExpectedAuthType } from "../types/expected-auth-type.type.js";
-import jwt, { type JwtPayload } from 'jsonwebtoken';
+import jwt, { JsonWebTokenError, NotBeforeError, TokenExpiredError, type JwtPayload } from 'jsonwebtoken';
 import type { AuthTokenPayload } from "../interfaces/basicAuth/auth-token-payload.interface.js";
 import type { BearerCredentialValidationResult } from "../types/bearer-credential-validation-result.type.js";
+import type { InvalidCredentialsResult } from "../interfaces/basicAuth/invalid-credentials-result.interface.js";
 
 const isAuthHeaderOfType = (authHeader: string, expectedType: ExpectedAuthType): boolean => {
     return authHeader
@@ -33,9 +34,20 @@ const isAuthTokenPayload = (value: JwtPayload | string): value is AuthTokenPaylo
     );
 };
 
+const generateInvalidAuthResult = (message: string, status: number): InvalidCredentialsResult => {
+    return {
+        isValid: false,
+        error: {
+            message,
+            status
+        },
+        data: null
+    };
+}
+
 export const parseBasicAuthHeader = (authHeader: string | undefined): CredentialValidationResult => {
     if (!authHeader) {
-        return {
+        const missingHeaderError: CredentialValidationResult = {
             isValid: false,
             error: {
                 message: 'Cabeçalho de autorização ausente.',
@@ -43,10 +55,11 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
             },
             data: null
         };
+        return missingHeaderError;
     }
 
     if (!isAuthHeaderOfType(authHeader, 'Basic')) {
-        return {
+        const invalidTypeError: CredentialValidationResult = {
             isValid: false,
             error: {
                 message: 'Tipo de autenticação inválido. Esperado "Basic".',
@@ -54,19 +67,21 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
             },
             data: null
         }
+        return invalidTypeError;
     }
 
     const hash: string | null = getAuthCredentialFromHeader(authHeader);
 
     if (!hash) {
-        return {
+        const missingHashError: CredentialValidationResult = {
             isValid: false,
             error: {
                 message: 'Hash de credenciais ausente no cabeçalho de autorização.',
                 status: 400
             },
             data: null
-        }
+        };
+        return missingHashError;
     }
 
     try {
@@ -74,7 +89,7 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
         const separatorIndex: number = decoded.indexOf(':');
 
         if (separatorIndex <= 0) {
-            return {
+            const malformedError: CredentialValidationResult = {
                 isValid: false,
                 error: {
                     message: 'Cabeçalho de autorização malformado.',
@@ -82,13 +97,14 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
                 },
                 data: null
             };
+            return malformedError;
         }
 
         const email: string = decoded.slice(0, separatorIndex).trim().toLowerCase();
         const password: string = decoded.slice(separatorIndex + 1);
 
         if (!email || !password) {
-            return {
+            const missingCredentialsError: CredentialValidationResult = {
                 isValid: false,
                 error: {
                     message: 'E-mail e/ou senha ausentes no cabeçalho de autorização.',
@@ -96,6 +112,7 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
                 },
                 data: null
             };
+            return missingCredentialsError;
         }
 
         return {
@@ -103,7 +120,7 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
             error: null,
             data: { email, password }
         }
-    } catch {
+    } catch (error: unknown) {
         return {
             isValid: false,
             error: {
@@ -117,38 +134,29 @@ export const parseBasicAuthHeader = (authHeader: string | undefined): Credential
 
 export const parseBearerAuthHeader = (authHeader: string | undefined): BearerCredentialValidationResult => {
     if (!authHeader) {
-        return {
-            isValid: false,
-            error: {
-                message: 'Cabeçalho de autorização ausente.',
-                status: 400
-            },
-            data: null
-        };
+        const missingHeaderError: BearerCredentialValidationResult = generateInvalidAuthResult(
+            'Cabeçalho de autorização ausente.',
+            400
+        );
+        return missingHeaderError;
     }
 
     if (!isAuthHeaderOfType(authHeader, 'Bearer')) {
-        return {
-            isValid: false,
-            error: {
-                message: 'Tipo de autenticação inválido. Esperado "Bearer".',
-                status: 400
-            },
-            data: null
-        }
+        const invalidTypeError: BearerCredentialValidationResult = generateInvalidAuthResult(
+            'Tipo de autenticação inválido. Esperado "Bearer".',
+            400
+        );
+        return invalidTypeError;
     }
 
     const token: string | null = getAuthCredentialFromHeader(authHeader);
 
     if (!token) {
-        return {
-            isValid: false,
-            error: {
-                message: 'Token de credenciais ausente no cabeçalho de autorização.',
-                status: 400
-            },
-            data: null
-        }
+        const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
+            'Token de credenciais ausente no cabeçalho de autorização.',
+            400
+        );
+        return invalidTokenError;
     }
 
     try {
@@ -157,27 +165,21 @@ export const parseBearerAuthHeader = (authHeader: string | undefined): BearerCre
         if (!secretKey) {
             console.error('[Auth] JWT_SECRET_KEY is not configured.');
 
-            return {
-                isValid: false,
-                error: {
-                    message: 'Erro interno do servidor.',
-                    status: 500
-                },
-                data: null
-            };
+            const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
+                'Erro interno no servidor.',
+                500
+            );
+            return invalidTokenError;
         }
 
         const decoded: string | JwtPayload = jwt.verify(token, secretKey);
 
         if (!isAuthTokenPayload(decoded)) {
-            return {
-                isValid: false,
-                error: {
-                    message: 'Token inválido. Payload incompleto.',
-                    status: 401
-                },
-                data: null
-            };
+            const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
+                'Token de credenciais inválido. Payload não contém as informações esperadas.',
+                401
+            );
+            return invalidTokenError;
         }
 
         return {
@@ -185,17 +187,37 @@ export const parseBearerAuthHeader = (authHeader: string | undefined): BearerCre
             error: null,
             data: {
                 token,
-                payload: decoded 
+                payload: decoded
             }
         };
     } catch (error: unknown) {
-        return {
-            isValid: false,
-            error: {
-                message: 'Token de credenciais inválido ou expirado.',
-                status: 401
-            },
-            data: null
-        };
+        if (error instanceof TokenExpiredError) {
+            const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
+                'Token de credenciais expirado.', 
+                401
+            );
+            return invalidTokenError;
+        } else if (error instanceof NotBeforeError) {
+            const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
+                'Token de credenciais não ativo.', 
+                401
+            );
+            return invalidTokenError;
+        } else if (error instanceof JsonWebTokenError) {
+            const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
+                'Token de credenciais inválido.', 
+                401
+            );
+            return invalidTokenError;
+        } else {
+            console.error('[Auth] Error verifying JWT:', error);
+
+            const invalidTokenError: BearerCredentialValidationResult = generateInvalidAuthResult(
+                'Erro interno no servidor.',
+                500
+            );
+            return invalidTokenError;
+        }
+
     }
 };

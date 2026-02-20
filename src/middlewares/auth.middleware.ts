@@ -1,7 +1,8 @@
-import type { Request, Response, NextFunction } from 'express';
 import { parseBearerAuthHeader } from '../utils/auth.util.js';
 import { User, type UserInstance } from '../models/user.model.js';
+import type { Request, Response, NextFunction } from 'express';
 import type { BearerCredentialValidationResult } from '../types/bearer-credential-validation-result.type.js';
+import type { AuthTokenPayload } from '../interfaces/basicAuth/auth-token-payload.interface.js';
 
 export const Auth = {
     private: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -14,13 +15,12 @@ export const Auth = {
                 return;
             }
 
-            const userId: number = credentials.data.payload.id;
-            const userEmail: string = credentials.data.payload.email;
+            const { id, email }: AuthTokenPayload = credentials.data.payload;
 
             const hasUser: UserInstance | null = await User.findOne({
                 where: {
-                    id: userId,
-                    email: userEmail
+                    id: id,
+                    email: email
                 }
             });
 
