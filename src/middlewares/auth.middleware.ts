@@ -1,33 +1,31 @@
 import type { Request, Response, NextFunction } from 'express';
-import bcrypt from 'bcrypt';
+import { parseBearerAuthHeader } from '../utils/auth.util.js';
 import { User, type UserInstance } from '../models/user.model.js';
-import { parseBasicAuthHeader } from '../utils/auth.util.js';
-import type { BasicCredentials } from '../interfaces/basicAuth/basic-credentials.interface.js';
-import type { CredentialValidationResult } from '../types/credential-validation-result.type.js';
+import type { BearerCredentialValidationResult } from '../types/bearer-credential-validation-result.type.js';
 
 export const Auth = {
     private: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const credentials: CredentialValidationResult = parseBasicAuthHeader(req.headers.authorization?.toString());
+            const credentials: BearerCredentialValidationResult = parseBearerAuthHeader(req.headers.authorization?.toString());
 
             if (!credentials.isValid) {
-                res.setHeader('WWW-Authenticate', 'Basic realm="Restricted"');
+                res.setHeader('WWW-Authenticate', 'Bearer realm="Restricted"');
                 res.status(credentials.error.status).json({ error: credentials.error.message });
                 return;
             }
 
-            const { email, password }: BasicCredentials = credentials.data;
+            const userId: number = credentials.data.payload.id;
+            const userEmail: string = credentials.data.payload.email;
 
-            const user: UserInstance | null = await User.findOne({ where: { email } });
+            const hasUser: UserInstance | null = await User.findOne({
+                where: {
+                    id: userId,
+                    email: userEmail
+                }
+            });
 
-            if (!user) {
-                res.status(401).json({ error: 'Credenciais inválidas.' });
-                return;
-            }
-
-            const isPasswordValid: boolean = await bcrypt.compare(password, user.password);
-
-            if (!isPasswordValid) {
+            if (!hasUser) {
+                res.setHeader('WWW-Authenticate', 'Bearer realm="Restricted"');
                 res.status(401).json({ error: 'Credenciais inválidas.' });
                 return;
             }

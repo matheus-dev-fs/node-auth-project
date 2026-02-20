@@ -1,9 +1,5 @@
 import type { ErrorRequestHandler } from 'express';
-
-type ParseError = Error & {
-    status?: number;
-    type?: string;
-};
+import type { ParseError } from '../types/parse-error.type.js';
 
 export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     const error: ParseError = err as ParseError;

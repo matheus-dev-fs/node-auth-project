@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import express from 'express';
-import type { ErrorRequestHandler, Express } from 'express';
+import type { Express } from 'express';
 import cors from 'cors';
 
 import apiRoute from './routes/api.route.js';

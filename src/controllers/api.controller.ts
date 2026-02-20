@@ -2,9 +2,6 @@ import type { Request, Response, NextFunction } from 'express';
 import { User, type UserInstance } from '../models/user.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 export const ping = (req: Request, res: Response): void => {
     res.json({ pong: true });
