@@ -1,6 +1,10 @@
 import type { Request, Response, NextFunction } from 'express';
 import { User, type UserInstance } from '../models/user.model.js';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export const ping = (req: Request, res: Response): void => {
     res.json({ pong: true });
@@ -22,7 +26,6 @@ export const register = async (req: Request, res: Response, next: NextFunction):
             res.status(400).json({ error: 'E-mail já existe.' });
             return;
         }
-        
         const encryptedPassword: string = await bcrypt.hash(password, 10);
         const newUser: UserInstance = await User.create({ email, password: encryptedPassword });
 
@@ -58,7 +61,13 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
             return;
         }
 
-        res.json({ status: true });
+        const token: string = jwt.sign(
+            { id: user.id, email: user.email },
+            process.env.JWT_SECRET_KEY as string,
+            { expiresIn: '1h' }
+        );
+
+        res.json({ status: true, token });
     } catch (error) {
         next(error);
     }
