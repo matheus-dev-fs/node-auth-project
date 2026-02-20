@@ -26,10 +26,17 @@ export const register = async (req: Request, res: Response, next: NextFunction):
             res.status(400).json({ error: 'E-mail já existe.' });
             return;
         }
+
         const encryptedPassword: string = await bcrypt.hash(password, 10);
         const newUser: UserInstance = await User.create({ email, password: encryptedPassword });
 
-        res.status(201).json({ id: newUser.id });
+        const token: string = jwt.sign(
+            { id: newUser.id, email: newUser.email },
+            process.env.JWT_SECRET_KEY as string,
+            { expiresIn: '1h' }
+        );
+
+        res.status(201).json({ id: newUser.id, email: newUser.email, token });
     } catch (error) {
         next(error);
     }
@@ -67,7 +74,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
             { expiresIn: '1h' }
         );
 
-        res.json({ status: true, token });
+        res.json({ status: true, email: user.email, token });
     } catch (error) {
         next(error);
     }
