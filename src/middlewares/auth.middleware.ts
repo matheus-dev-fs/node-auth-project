@@ -12,7 +12,7 @@ export const Auth = {
 
             if (!credentials.isValid) {
                 res.setHeader('WWW-Authenticate', 'Basic realm="Restricted"');
-                res.status(401).json({ error: credentials.error });
+                res.status(credentials.error.status).json({ error: credentials.error.message });
                 return;
             }
 

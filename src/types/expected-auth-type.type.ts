@@ -1,0 +1,1 @@
+export type ExpectedAuthType = 'Basic' | 'Bearer';

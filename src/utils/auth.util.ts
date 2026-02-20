@@ -1,22 +1,32 @@
 import type { CredentialValidationResult } from "../types/credential-validation-result.type.js";
+import type { ExpectedAuthType } from "../types/expected-auth-type.type.js";
 
-const isBasicAuthHeader = (authHeader: string): boolean => {
-    return authHeader.trim().toLowerCase().startsWith('basic ');
+const isAuthHeaderOfType = (authHeader: string, expectedType: ExpectedAuthType): boolean => {
+    return authHeader
+        .trim()
+        .toLowerCase()
+        .startsWith(expectedType.toLowerCase() + ' ');
 }
 
-export const parseBasicAuthHeader = (authHeader?: string): CredentialValidationResult => {
+export const parseBasicAuthHeader = (authHeader: string | undefined): CredentialValidationResult => {
     if (!authHeader) {
         return { 
             isValid: false,
-            error: 'Cabeçalho de autorização ausente.',
+            error: {
+                message: 'Cabeçalho de autorização ausente.',
+                status: 400
+            },
             data: null
         };
     }
 
-    if (!isBasicAuthHeader(authHeader)) {
+    if (!isAuthHeaderOfType(authHeader, 'Basic')) {
         return {
             isValid: false,
-            error: 'Cabeçalho de autorização não é do tipo Basic.',
+            error: {
+                message: 'Tipo de autenticação inválido. Esperado "Basic".',
+                status: 400
+            },
             data: null
         }
     }
@@ -26,7 +36,10 @@ export const parseBasicAuthHeader = (authHeader?: string): CredentialValidationR
     if (!hash) {
         return {
             isValid: false,
-            error: 'Cabeçalho de autorização malformado.',
+            error: {
+                message: 'Hash de credenciais ausente no cabeçalho de autorização.',
+                status: 400
+            },
             data: null
         }
     }
@@ -38,7 +51,10 @@ export const parseBasicAuthHeader = (authHeader?: string): CredentialValidationR
         if (separatorIndex <= 0) {
             return {
                 isValid: false,
-                error: 'Cabeçalho de autorização malformado.',
+                error: {
+                    message: 'Cabeçalho de autorização malformado.',
+                    status: 400
+                },
                 data: null
             };
         }
@@ -49,7 +65,10 @@ export const parseBasicAuthHeader = (authHeader?: string): CredentialValidationR
         if (!email || !password) {
             return {
                 isValid: false,
-                error: 'E-mail e/ou senha ausentes no cabeçalho de autorização.',
+                error: {
+                    message: 'E-mail e/ou senha ausentes no cabeçalho de autorização.',
+                    status: 400
+                },
                 data: null
             };
         }
@@ -62,7 +81,10 @@ export const parseBasicAuthHeader = (authHeader?: string): CredentialValidationR
     } catch {
         return {
             isValid: false,
-            error: 'Erro ao decodificar o cabeçalho de autorização.',
+            error: {
+                message: 'Hash de credenciais inválido. Não é um Base64 válido.',
+                status: 400
+            },
             data: null
         };
     }
